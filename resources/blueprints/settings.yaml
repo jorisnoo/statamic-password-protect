@@ -1,0 +1,21 @@
+tabs:
+  main:
+    sections:
+      -
+        fields:
+          -
+            handle: enabled
+            field:
+              type: toggle
+              display: Enabled
+              instructions: "Enable site-wide password protection for anonymous visitors. Logged-in CP users always bypass the password wall."
+              default: false
+          -
+            handle: password
+            field:
+              type: text
+              display: Password
+              instructions: "The password visitors must enter to access the site."
+              input_type: password
+              validate:
+                - required_if:enabled,true

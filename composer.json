@@ -1,0 +1,43 @@
+{
+    "name": "jorisnoo/statamic-password-protect",
+    "description": "Site-wide password protection for anonymous visitors",
+    "type": "statamic-addon",
+    "license": "MIT",
+    "require": {
+        "php": "^8.3",
+        "statamic/cms": "^6.0"
+    },
+    "require-dev": {
+        "orchestra/testbench": "^10.0",
+        "pestphp/pest": "^3.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "Noo\\PasswordProtect\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Noo\\PasswordProtect\\Tests\\": "tests/"
+        }
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "Noo\\PasswordProtect\\ServiceProvider"
+            ]
+        },
+        "statamic": {
+            "name": "Password Protect",
+            "description": "Site-wide password protection for anonymous visitors"
+        }
+    },
+    "config": {
+        "allow-plugins": {
+            "pestphp/pest-plugin": true,
+            "pixelfear/composer-dist-plugin": true
+        }
+    },
+    "minimum-stability": "dev",
+    "prefer-stable": true
+}
