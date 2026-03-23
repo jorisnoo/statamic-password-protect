@@ -27,10 +27,14 @@ class ServiceProvider extends AddonServiceProvider
 
     protected function isPasswordProtectionEnabled(): bool
     {
-        $addon = Addon::get('jorisnoo/statamic-password-protect');
+        try {
+            $addon = Addon::get('jorisnoo/statamic-password-protect');
 
-        return $addon
-            && $addon->setting('enabled')
-            && $addon->setting('password');
+            return $addon
+                && $addon->setting('enabled')
+                && $addon->setting('password');
+        } catch (\Exception $e) {
+            return false;
+        }
     }
 }

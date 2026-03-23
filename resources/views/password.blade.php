@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>{{ config('app.name') }}</title>
+    @if($title)<title>{{ $title }}</title>@endif
     <style>
         *,
         *::before,
@@ -15,8 +15,8 @@
 
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-            background: #f3f4f6;
-            color: #1f2937;
+            background: #fff;
+            color: #000;
             min-height: 100dvh;
             display: flex;
             align-items: center;
@@ -25,20 +25,17 @@
         }
 
         .card {
-            background: #fff;
-            border-radius: 12px;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08), 0 4px 24px rgba(0, 0, 0, 0.04);
             padding: 40px;
             width: 100%;
-            max-width: 380px;
+            max-width: 340px;
         }
 
         h1 {
             font-size: 18px;
             font-weight: 600;
             text-align: center;
-            margin-bottom: 24px;
-            letter-spacing: -0.01em;
+            margin-bottom: 28px;
+            letter-spacing: -0.02em;
         }
 
         .field {
@@ -49,98 +46,104 @@
 
         input[type="password"] {
             width: 100%;
-            padding: 10px 14px;
+            padding: 10px 0;
             font-size: 15px;
             font-family: inherit;
-            border: 1px solid #d1d5db;
-            border-radius: 8px;
-            background: #fff;
-            color: #1f2937;
+            border: none;
+            border-bottom: 1.5px solid #000;
+            background: transparent;
+            color: #000;
             outline: none;
-            transition: border-color 0.15s, box-shadow 0.15s;
+            border-radius: 0;
+            transition: border-color 0.15s;
+        }
+
+        input[type="password"]::placeholder {
+            color: #999;
         }
 
         input[type="password"]:focus {
-            border-color: #6366f1;
-            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+            border-bottom-color: #555;
         }
 
         input[type="password"].has-error {
-            border-color: #ef4444;
-        }
-
-        input[type="password"].has-error:focus {
-            box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.15);
+            border-bottom-color: #000;
         }
 
         .error {
             font-size: 13px;
-            color: #ef4444;
+            color: #666;
         }
 
         button {
             width: 100%;
-            margin-top: 16px;
+            margin-top: 20px;
             padding: 10px 14px;
             font-size: 15px;
             font-weight: 500;
             font-family: inherit;
             color: #fff;
-            background: #4f46e5;
+            background: #000;
             border: none;
-            border-radius: 8px;
+            border-radius: 0;
             cursor: pointer;
             transition: background 0.15s;
         }
 
         button:hover {
-            background: #4338ca;
+            background: #333;
         }
 
         button:focus-visible {
-            outline: 2px solid #4f46e5;
+            outline: 2px solid #000;
             outline-offset: 2px;
         }
 
         @media (prefers-color-scheme: dark) {
             body {
-                background: #111827;
-                color: #e5e7eb;
-            }
-
-            .card {
-                background: #1f2937;
-                box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3), 0 4px 24px rgba(0, 0, 0, 0.2);
+                background: #000;
+                color: #fff;
             }
 
             input[type="password"] {
-                background: #111827;
-                border-color: #374151;
-                color: #e5e7eb;
+                border-bottom-color: #fff;
+                color: #fff;
+            }
+
+            input[type="password"]::placeholder {
+                color: #666;
             }
 
             input[type="password"]:focus {
-                border-color: #818cf8;
-                box-shadow: 0 0 0 3px rgba(129, 140, 248, 0.2);
+                border-bottom-color: #aaa;
             }
 
             input[type="password"].has-error {
-                border-color: #f87171;
+                border-bottom-color: #fff;
+            }
+
+            .error {
+                color: #999;
             }
 
             button {
-                background: #6366f1;
+                background: #fff;
+                color: #000;
             }
 
             button:hover {
-                background: #818cf8;
+                background: #ddd;
+            }
+
+            button:focus-visible {
+                outline-color: #fff;
             }
         }
     </style>
 </head>
 <body>
     <div class="card">
-        <h1>{{ config('app.name') }}</h1>
+        @if($title)<h1>{{ $title }}</h1>@endif
 
         <form method="POST" action="{{ route('statamic.password-protect.verify') }}">
             @csrf

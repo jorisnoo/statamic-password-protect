@@ -19,3 +19,9 @@ tabs:
               input_type: password
               validate:
                 - required_if:enabled,true
+          -
+            handle: title
+            field:
+              type: text
+              display: Title
+              instructions: "Shown on the password page. Leave empty to hide."

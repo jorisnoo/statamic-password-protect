@@ -11,7 +11,12 @@ class PasswordProtectController
 {
     public function show(): View
     {
-        return view('statamic-password-protect::password');
+        $addon = Addon::get('jorisnoo/statamic-password-protect');
+        $title = $addon?->setting('title');
+
+        return view('statamic-password-protect::password', [
+            'title' => $title,
+        ]);
     }
 
     public function verify(Request $request): RedirectResponse

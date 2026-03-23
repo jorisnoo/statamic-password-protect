@@ -2,7 +2,7 @@
 
 Site-wide password protection for Statamic 6. Anonymous visitors must enter a password to view the site. Logged-in CP users always bypass the wall.
 
-Settings are managed through the Statamic control panel under the addon settings page.
+Settings are managed through the addon settings page in the Statamic control panel.
 
 ## Requirements
 
@@ -18,10 +18,11 @@ composer require jorisnoo/statamic-password-protect
 
 ## Configuration
 
-1. Go to **CP > Tools > Addons > Password Protect > Settings**
+1. Go to **CP > Addons > Password Protect > Settings**
 2. Toggle **Enabled** on
 3. Set a **Password**
-4. Save
+4. Optionally set a **Title** for the password page (defaults to your site name)
+5. Save
 
 That's it. Anonymous visitors will now see a password prompt. Authenticated CP users are never affected.
 
