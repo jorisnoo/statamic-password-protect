@@ -13,12 +13,15 @@ tabs:
           -
             handle: password
             field:
-              type: text
+              type: protected_password
               display: Password
-              instructions: "The password visitors must enter to access the site."
+              instructions: "The password visitors must enter to access the site. Passwords are stored as one-way hashes. Leave the existing masked value unchanged to keep the current password."
               input_type: password
+              autocomplete: new-password
               validate:
                 - required_if:enabled,true
+                - min:12
+                - max:1024
           -
             handle: title
             field:

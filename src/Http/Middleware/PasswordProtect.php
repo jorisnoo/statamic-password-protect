@@ -4,31 +4,31 @@ namespace Noo\PasswordProtect\Http\Middleware;
 
 use Closure;
 use Illuminate\Http\Request;
-use Statamic\Facades\Addon;
+use Noo\PasswordProtect\Security\PasswordAccess;
+use Noo\PasswordProtect\Security\PasswordSettings;
 use Symfony\Component\HttpFoundation\Response;
 
 class PasswordProtect
 {
+    public function __construct(
+        private PasswordSettings $passwords,
+        private PasswordAccess $access,
+    ) {
+    }
+
     public function handle(Request $request, Closure $next): Response
     {
-        if (! $this->isEnabled()) {
+        if (! $this->passwords->isEnabled()) {
             return $next($request);
         }
 
         if ($this->shouldBypass($request)) {
-            return $next($request);
+            return $this->preventCaching($next($request));
         }
 
-        return redirect()->guest(route('statamic.password-protect.show'));
-    }
-
-    protected function isEnabled(): bool
-    {
-        $addon = Addon::get('jorisnoo/statamic-password-protect');
-
-        return $addon
-            && $addon->setting('enabled')
-            && $addon->setting('password');
+        return $this->preventCaching(
+            redirect()->guest(route('statamic.password-protect.show')),
+        );
     }
 
     protected function shouldBypass(Request $request): bool
@@ -45,29 +45,44 @@ class PasswordProtect
             return true;
         }
 
-        if ($request->session()->get('password_protect_authorized')) {
-            return true;
-        }
+        $passwordHash = $this->passwords->passwordHash();
+        $authorizationSalt = $this->passwords->authorizationSalt();
 
-        return false;
+        return $passwordHash
+            && $authorizationSalt
+            && $this->access->isAuthorized($request, $passwordHash, $authorizationSalt);
     }
 
     protected function isCpRoute(Request $request): bool
     {
-        $cpRoute = config('statamic.cp.route', 'cp');
+        $cpRoute = trim((string) config('statamic.cp.route', 'cp'), '/');
+        $path = trim($request->getPathInfo(), '/');
 
-        return str_starts_with(ltrim($request->getPathInfo(), '/'), $cpRoute);
+        return $cpRoute !== '' && ($path === $cpRoute || str_starts_with($path, $cpRoute.'/'));
     }
 
     protected function isPasswordRoute(Request $request): bool
     {
         $name = $request->route()?->getName();
 
-        return $name && str_starts_with($name, 'statamic.password-protect.');
+        return in_array($name, [
+            'statamic.password-protect.show',
+            'statamic.password-protect.verify',
+        ], true);
     }
 
     protected function isAuthenticated(): bool
     {
-        return auth()->guard(config('statamic.users.guards.cp.guard', 'web'))->check();
+        $user = auth()->guard(config('statamic.users.guards.cp', 'web'))->user();
+
+        return $user && $user->can('access cp');
+    }
+
+    private function preventCaching(Response $response): Response
+    {
+        $response->headers->set('Cache-Control', 'private, no-store, max-age=0');
+        $response->headers->set('Pragma', 'no-cache');
+
+        return $response;
     }
 }
