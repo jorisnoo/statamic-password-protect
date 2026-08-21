@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.2.1](https://github.com/jorisnoo/statamic-password-protect/releases/tag/v0.2.1) (2026-08-21)
+
+### Bug Fixes
+
+- remove password length restrictions ([0441e1c](https://github.com/jorisnoo/statamic-password-protect/commit/0441e1c2def117e58928b719fca7b3ead8c8c56a))
 ## [0.2.0](https://github.com/jorisnoo/statamic-password-protect/releases/tag/v0.2.0) (2026-07-10)
 
 ### Bug Fixes
