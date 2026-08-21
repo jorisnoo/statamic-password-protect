@@ -20,8 +20,6 @@ tabs:
               autocomplete: new-password
               validate:
                 - required_if:enabled,true
-                - min:12
-                - max:1024
           -
             handle: title
             field:

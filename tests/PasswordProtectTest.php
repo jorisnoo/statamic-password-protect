@@ -21,7 +21,7 @@ use Statamic\Facades\User;
 use Statamic\Http\Controllers\GlideController;
 use Statamic\StaticCaching\StaticCacheManager;
 
-const VALID_PASSWORD = 'correct horse battery staple';
+const VALID_PASSWORD = 'x';
 
 function enablePasswordProtection(string $password = VALID_PASSWORD): void
 {
@@ -51,6 +51,15 @@ it('shows the password form', function () {
     $this->get(route('statamic.password-protect.show'))
         ->assertOk()
         ->assertViewIs('statamic-password-protect::password');
+});
+
+it('does not impose password restrictions', function () {
+    $rules = Addon::get(PasswordSettings::ADDON)
+        ->settingsBlueprint()
+        ->field('password')
+        ->rules()['password'];
+
+    expect($rules)->toBe(['required_if:enabled,true']);
 });
 
 it('stores passwords as one-way hashes', function () {
@@ -164,6 +173,16 @@ it('accepts the correct password and issues session and cookie authorization', f
         ->assertSessionMissing('errors')
         ->assertHeader('Cache-Control', 'max-age=0, no-store, private')
         ->assertStatus(404);
+});
+
+it('accepts a password longer than the previous maximum', function () {
+    $password = str_repeat('x', 1025);
+    enablePasswordProtection($password);
+
+    $this->post(route('statamic.password-protect.verify'), [
+        'password' => $password,
+    ])->assertRedirect('/')
+        ->assertCookie(PasswordAccess::COOKIE);
 });
 
 it('supports authorization on routes without a session middleware', function () {

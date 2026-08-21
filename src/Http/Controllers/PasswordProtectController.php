@@ -13,8 +13,7 @@ class PasswordProtectController
     public function __construct(
         private PasswordSettings $passwords,
         private PasswordAccess $access,
-    ) {
-    }
+    ) {}
 
     public function show(): View
     {
@@ -29,7 +28,7 @@ class PasswordProtectController
     public function verify(Request $request): RedirectResponse
     {
         $request->validate([
-            'password' => 'required|string|max:1024',
+            'password' => ['required', 'string'],
         ]);
 
         $storedHash = $this->passwords->passwordHash();

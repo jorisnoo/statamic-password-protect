@@ -20,7 +20,7 @@ composer require jorisnoo/statamic-password-protect
 
 1. Go to **CP > Addons > Password Protect > Settings**
 2. Toggle **Enabled** on
-3. Set a **Password** of at least 12 characters
+3. Set a **Password**
 4. Optionally set a **Title** for the password page (defaults to your site name)
 5. Save
 
