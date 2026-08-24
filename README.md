@@ -37,7 +37,7 @@ A middleware intercepts frontend requests and Statamic's REST API, GraphQL, and 
 5. Does the session or HttpOnly authorization cookie contain a fingerprint for the current password and authorization generation? Pass through.
 6. Otherwise, redirect to the password form.
 
-After entering the correct password, visitors are redirected back to the page they originally requested. Authorization persists for the browser session. Changing the password or disabling and re-enabling protection invalidates every existing authorization.
+After entering the correct password, visitors are redirected to the home page. Authorization persists for the browser session. Changing the password or disabling and re-enabling protection invalidates every existing authorization.
 
 Protected responses are marked `private, no-store` so reverse proxies and browsers do not reuse an authorized response for another visitor.
 

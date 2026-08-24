@@ -42,7 +42,8 @@ it('redirects anonymous visitors to the password form', function () {
     enablePasswordProtection();
 
     $this->get('/about')
-        ->assertRedirect(route('statamic.password-protect.show'));
+        ->assertRedirect(route('statamic.password-protect.show'))
+        ->assertSessionMissing('url.intended');
 });
 
 it('shows the password form', function () {
@@ -164,9 +165,10 @@ it('throttles repeated password guesses', function () {
 it('accepts the correct password and issues session and cookie authorization', function () {
     enablePasswordProtection();
 
-    $this->post(route('statamic.password-protect.verify'), [
-        'password' => VALID_PASSWORD,
-    ])->assertRedirect('/')
+    $this->withSession(['url.intended' => url('/site.webmanifest')])
+        ->post(route('statamic.password-protect.verify'), [
+            'password' => VALID_PASSWORD,
+        ])->assertRedirect('/')
         ->assertCookie(PasswordAccess::COOKIE);
 
     $this->get('/about')

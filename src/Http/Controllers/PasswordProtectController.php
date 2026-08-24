@@ -40,7 +40,7 @@ class PasswordProtectController
             && $this->passwords->verify($request->string('password')->toString(), $storedHash)) {
             $this->access->grant($request, $storedHash, $authorizationSalt);
 
-            return redirect()->intended('/')
+            return redirect('/')
                 ->withCookie($this->access->cookie($storedHash, $authorizationSalt));
         }
 

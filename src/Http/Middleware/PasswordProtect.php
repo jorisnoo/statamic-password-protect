@@ -27,7 +27,7 @@ class PasswordProtect
         }
 
         return $this->preventCaching(
-            redirect()->guest(route('statamic.password-protect.show')),
+            redirect()->route('statamic.password-protect.show'),
         );
     }
 
