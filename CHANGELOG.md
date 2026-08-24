@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.2.2](https://github.com/jorisnoo/statamic-password-protect/releases/tag/v0.2.2) (2026-08-24)
+
+### Bug Fixes
+
+- always redirect to home page after password verification ([5ebc5e9](https://github.com/jorisnoo/statamic-password-protect/commit/5ebc5e92c89fdf0fe93c03f67955aa1dadcc4fda))
 ## [0.2.1](https://github.com/jorisnoo/statamic-password-protect/releases/tag/v0.2.1) (2026-08-21)
 
 ### Bug Fixes
