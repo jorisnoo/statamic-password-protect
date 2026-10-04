@@ -2,17 +2,17 @@
 
 All notable changes to this project will be documented in this file.
 
-## [0.2.2](https://github.com/jorisnoo/statamic-password-protect/releases/tag/v0.2.2) (2026-08-24)
+## [0.2.2](https://github.com/jorisnoo/statamic-password-protect/releases/tag/0.2.2) (2026-08-24)
 
 ### Bug Fixes
 
 - always redirect to home page after password verification ([5ebc5e9](https://github.com/jorisnoo/statamic-password-protect/commit/5ebc5e92c89fdf0fe93c03f67955aa1dadcc4fda))
-## [0.2.1](https://github.com/jorisnoo/statamic-password-protect/releases/tag/v0.2.1) (2026-08-21)
+## [0.2.1](https://github.com/jorisnoo/statamic-password-protect/releases/tag/0.2.1) (2026-08-21)
 
 ### Bug Fixes
 
 - remove password length restrictions ([0441e1c](https://github.com/jorisnoo/statamic-password-protect/commit/0441e1c2def117e58928b719fca7b3ead8c8c56a))
-## [0.2.0](https://github.com/jorisnoo/statamic-password-protect/releases/tag/v0.2.0) (2026-07-10)
+## [0.2.0](https://github.com/jorisnoo/statamic-password-protect/releases/tag/0.2.0) (2026-07-10)
 
 ### Bug Fixes
 
@@ -37,7 +37,7 @@ All notable changes to this project will be documented in this file.
 - invalidate authorization after password and enabled-state changes
 - clear existing static caches before enabling protection
 
-## [0.1.0](https://github.com/jorisnoo/statamic-password-protect/releases/tag/v0.1.0) (2026-03-23)
+## [0.1.0](https://github.com/jorisnoo/statamic-password-protect/releases/tag/0.1.0) (2026-03-23)
 
 ### Features
 
