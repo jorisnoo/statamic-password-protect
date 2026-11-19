@@ -35,6 +35,9 @@
             "Noo\\PasswordProtect\\Tests\\": "tests/"
         }
     },
+    "scripts": {
+        "test": "pest"
+    },
     "extra": {
         "laravel": {
             "providers": [
@@ -52,6 +55,6 @@
             "pixelfear/composer-dist-plugin": true
         }
     },
-    "minimum-stability": "dev",
+    "minimum-stability": "stable",
     "prefer-stable": true
 }

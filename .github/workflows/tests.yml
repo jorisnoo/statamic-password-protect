@@ -1,0 +1,55 @@
+name: Tests
+
+on:
+  pull_request:
+  push:
+    branches: ['**']
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - {php: '8.3', testbench: '^10.0', dependencies: lowest}
+          - {php: '8.3', testbench: '^11.0', dependencies: stable}
+          - {php: '8.5', testbench: '^10.0', dependencies: stable}
+          - {php: '8.5', testbench: '^11.0', dependencies: stable}
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
+      - uses: shivammathur/setup-php@2.40.0
+        with:
+          php-version: ${{ matrix.php }}
+          extensions: bcmath, exif, gd, intl, mbstring, pdo_sqlite, zip
+          coverage: none
+          tools: composer:v2
+      - run: composer validate --strict
+      - name: Resolve supported dependencies
+        env:
+          TESTBENCH: ${{ matrix.testbench }}
+          DEPENDENCIES: ${{ matrix.dependencies }}
+        run: |
+          args=(--prefer-stable --prefer-dist --no-interaction --with "orchestra/testbench:$TESTBENCH")
+          if [[ "$DEPENDENCIES" == lowest ]]; then args+=(--prefer-lowest); fi
+          composer update "${args[@]}"
+      - run: composer audit
+      - run: composer test
+
+  required:
+    name: Package checks
+    if: always()
+    needs: test
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Require every test lane
+        env:
+          RESULT: ${{ needs.test.result }}
+        run: test "$RESULT" = success

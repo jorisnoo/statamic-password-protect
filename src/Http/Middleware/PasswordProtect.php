@@ -6,6 +6,7 @@ use Closure;
 use Illuminate\Http\Request;
 use Noo\PasswordProtect\Security\PasswordAccess;
 use Noo\PasswordProtect\Security\PasswordSettings;
+use Statamic\Contracts\Addons\Settings;
 use Symfony\Component\HttpFoundation\Response;
 
 class PasswordProtect
@@ -16,22 +17,25 @@ class PasswordProtect
     ) {
     }
 
-    public function handle(Request $request, Closure $next): Response
+    public function handle(Request $request, Closure $next, string $format = 'html'): Response
     {
-        if (! $this->passwords->isEnabled()) {
+        $settings = $this->passwords->settings($request);
+        if (! $this->passwords->isEnabled($settings)) {
             return $next($request);
         }
 
-        if ($this->shouldBypass($request)) {
+        if ($this->shouldBypass($request, $settings)) {
             return $this->preventCaching($next($request));
         }
 
         return $this->preventCaching(
-            redirect()->route('statamic.password-protect.show'),
+            $format === 'json' || $request->expectsJson()
+                ? response()->json(['message' => __('Password required.')], 401)
+                : redirect()->route('statamic.password-protect.show'),
         );
     }
 
-    protected function shouldBypass(Request $request): bool
+    protected function shouldBypass(Request $request, Settings $settings): bool
     {
         if ($this->isCpRoute($request)) {
             return true;
@@ -41,16 +45,14 @@ class PasswordProtect
             return true;
         }
 
-        if ($this->isAuthenticated()) {
+        if ($request->hasSession() && $this->isAuthenticated()) {
             return true;
         }
 
-        $passwordHash = $this->passwords->passwordHash();
-        $authorizationSalt = $this->passwords->authorizationSalt();
+        $passwordHash = $this->passwords->passwordHash($settings);
+        $authorizationSalt = $this->passwords->authorizationSalt($settings) ?? PasswordSettings::LEGACY_SALT;
 
-        return $passwordHash
-            && $authorizationSalt
-            && $this->access->isAuthorized($request, $passwordHash, $authorizationSalt);
+        return $passwordHash !== null && $this->access->isAuthorized($request, $passwordHash, $authorizationSalt);
     }
 
     protected function isCpRoute(Request $request): bool

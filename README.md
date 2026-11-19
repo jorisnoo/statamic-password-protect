@@ -21,7 +21,7 @@ composer require jorisnoo/statamic-password-protect
 1. Go to **CP > Addons > Password Protect > Settings**
 2. Toggle **Enabled** on
 3. Set a **Password**
-4. Optionally set a **Title** for the password page (defaults to your site name)
+4. Optionally set a **Title** for the password page (leave blank to hide it)
 5. Save
 
 That's it. Anonymous visitors will now see a password prompt. Authenticated CP users are never affected.
@@ -35,21 +35,21 @@ A middleware intercepts frontend requests and Statamic's REST API, GraphQL, and 
 3. Is this the password form itself? Pass through.
 4. Is the visitor logged into Statamic with the `access cp` permission? Pass through.
 5. Does the session or HttpOnly authorization cookie contain a fingerprint for the current password and authorization generation? Pass through.
-6. Otherwise, redirect to the password form.
+6. Otherwise, return HTTP 401 with JSON for REST, GraphQL, and clients requesting JSON; redirect HTML visitors to the password form. The named form route is `statamic.password-protect.show` (normally `/!/statamic-password-protect/password`). Unrelated routes in the application's `api` middleware group are not covered.
 
 After entering the correct password, visitors are redirected to the home page. Authorization persists for the browser session. Changing the password or disabling and re-enabling protection invalidates every existing authorization.
 
 Protected responses are marked `private, no-store` so reverse proxies and browsers do not reuse an authorized response for another visitor.
 
-Passwords are stored as one-way hashes. Existing plaintext settings from earlier addon versions are migrated automatically the next time the addon boots. The password hash is never preloaded into the control panel form.
+Passwords are stored as one-way hashes. Legacy plaintext settings still work without writing to disk on boot or login. Save the addon settings once to hash a legacy password. The control panel shows only a mask.
 
-Password verification is limited to five attempts per IP address per minute, with an additional global limit of 100 attempts per minute.
+Five failed guesses per minute are allowed per IPv4 address or IPv6 /64. Successful logins do not use another attempt and one network cannot exhaust a shared site-wide limit. Behind a reverse proxy, configure Laravel's trusted proxies so the app sees each client's address.
 
 ## Static Caching
 
-When password protection is enabled, the addon clears Statamic's existing static cache before disabling the static caching strategy. This removes previously generated full-measure files before nginx or Apache can serve them and ensures new requests pass through the middleware.
+Enabling protection clears the configured Statamic static cache. Protected frontend responses opt out of Statamic's cache writer without changing the site's configuration. Turning protection off allows the configured strategy to cache public responses again.
 
-When you disable password protection, the original static caching strategy is restored. This also works with long-running application workers.
+If you deploy settings outside the CP, drain existing requests and clear static files on **each** serving node before taking it back online. PHP cannot remove a response already held by an external CDN: purge that cache separately when enabling the wall.
 
 Files that are deliberately exposed directly from `public/` are outside PHP and cannot be protected by this addon. Keep sensitive source assets outside public storage and serve them through a protected application route or authenticated storage layer.
 
@@ -63,7 +63,7 @@ composer test
 
 ## License
 
-The MIT License (MIT). Please see [License File](LICENSE) for more information.
+The MIT License (MIT). Please see [License File](LICENSE.md) for more information.
 
 ## Maintainer releases
 

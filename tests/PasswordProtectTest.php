@@ -9,16 +9,20 @@ use Illuminate\Routing\Events\RouteMatched;
 use Illuminate\Session\Middleware\StartSession;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\ValidationException;
 use Noo\PasswordProtect\Fieldtypes\ProtectedPassword;
 use Noo\PasswordProtect\Http\Middleware\PasswordProtect;
+use Noo\PasswordProtect\Http\Middleware\PreventProtectedPageCaching;
 use Noo\PasswordProtect\Security\PasswordAccess;
 use Noo\PasswordProtect\Security\PasswordSettings;
 use Noo\PasswordProtect\Security\StaticCacheGuard;
+use Noo\PasswordProtect\ServiceProvider;
 use Rebing\GraphQL\GraphQLController;
 use Statamic\Events\AddonSettingsSaving;
 use Statamic\Facades\Addon;
 use Statamic\Facades\User;
 use Statamic\Http\Controllers\GlideController;
+use Statamic\StaticCaching\Middleware\Cache as StaticCacheMiddleware;
 use Statamic\StaticCaching\StaticCacheManager;
 
 const VALID_PASSWORD = 'x';
@@ -51,7 +55,8 @@ it('shows the password form', function () {
 
     $this->get(route('statamic.password-protect.show'))
         ->assertOk()
-        ->assertViewIs('statamic-password-protect::password');
+        ->assertViewIs('statamic-password-protect::password')
+        ->assertSee('<meta name="robots" content="noindex, nofollow">', false);
 });
 
 it('does not impose password restrictions', function () {
@@ -72,7 +77,7 @@ it('stores passwords as one-way hashes', function () {
         ->and(password_verify(VALID_PASSWORD, $stored))->toBeTrue();
 });
 
-it('migrates a legacy plaintext password', function () {
+it('reads legacy credentials without writing until the next settings save', function () {
     Event::fakeFor(function () {
         $settings = Addon::get(PasswordSettings::ADDON)->settings();
         $settings->set('enabled', true);
@@ -80,7 +85,13 @@ it('migrates a legacy plaintext password', function () {
         $settings->save();
     }, [AddonSettingsSaving::class]);
 
-    app(PasswordSettings::class)->migrateLegacyPassword();
+    $settings = Addon::get(PasswordSettings::ADDON)->settings();
+    $before = file_get_contents($settings->path());
+    app()->getProvider(ServiceProvider::class)->bootAddon();
+    $this->post(route('statamic.password-protect.verify'), ['password' => VALID_PASSWORD])
+        ->assertCookie(PasswordAccess::COOKIE);
+    expect(file_get_contents($settings->path()))->toBe($before);
+    $settings->set('password', ProtectedPassword::UNCHANGED)->save();
 
     $stored = Addon::get(PasswordSettings::ADDON)->settings()->raw()['password'];
 
@@ -98,7 +109,11 @@ it('migrates a legacy plaintext password that resembles a password hash', functi
         $settings->save();
     }, [AddonSettingsSaving::class]);
 
-    app(PasswordSettings::class)->migrateLegacyPassword();
+    $this->post(route('statamic.password-protect.verify'), ['password' => 'not-the-site-password'])
+        ->assertCookieMissing(PasswordAccess::COOKIE);
+    $this->post(route('statamic.password-protect.verify'), ['password' => $hashShapedPassword])
+        ->assertCookie(PasswordAccess::COOKIE);
+    Addon::get(PasswordSettings::ADDON)->settings()->save();
 
     $stored = Addon::get(PasswordSettings::ADDON)->settings()->raw()['password'];
 
@@ -303,16 +318,21 @@ it('does not redirect when protection is disabled', function () {
         ->not->toBe(route('statamic.password-protect.show'));
 });
 
-it('does not redirect when no password is set', function () {
+it('requires an actual password when enabling protection', function () {
     $settings = Addon::get(PasswordSettings::ADDON)->settings();
-    $settings->set('enabled', true);
-    $settings->set('password', '');
-    $settings->save();
+    $settings->set(['enabled' => true, 'password' => ProtectedPassword::UNCHANGED]);
+    expect(fn () => $settings->save())->toThrow(ValidationException::class);
+    expect(app(PasswordSettings::class)->passwordHash())->toBeNull();
+});
 
-    $response = $this->get('/about');
-
-    expect($response->headers->get('Location'))
-        ->not->toBe(route('statamic.password-protect.show'));
+it('does not fill a partial settings replacement from the stored credentials', function () {
+    enablePasswordProtection();
+    $settings = Addon::get(PasswordSettings::ADDON)->settings()->set(['enabled' => true]);
+    $passwords = app(PasswordSettings::class);
+    expect($passwords->passwordHash($settings))->toBeNull()
+        ->and($passwords->authorizationSalt($settings))->toBeNull()
+        ->and(fn () => $settings->save())->toThrow(ValidationException::class)
+        ->and($passwords->isEnabled())->toBeTrue();
 });
 
 it('does not protect exact CP routes', function () {
@@ -339,6 +359,7 @@ it('protects frontend live preview URLs', function () {
 });
 
 it('attaches protection to REST, GraphQL, and Glide delivery routes', function () {
+    enablePasswordProtection();
     $routes = collect(app('router')->getRoutes()->getRoutes());
     $routeGroups = [
         'REST' => $routes->filter(fn ($route) => str_starts_with($route->getActionName(), 'Statamic\\Http\\Controllers\\API\\')),
@@ -350,20 +371,16 @@ it('attaches protection to REST, GraphQL, and Glide delivery routes', function (
         expect($group, $name.' routes should be registered')->not->toBeEmpty();
 
         $group->each(function ($route) use ($name) {
+            $request = Request::create('/', 'GET', [], [config('session.cookie') => 'existing']);
+            event(new RouteMatched($route, $request));
+
+            $wall = $name === 'Glide' ? PasswordProtect::class : PasswordProtect::class.':json';
+            expect(array_slice($route->gatherMiddleware(), 0, 4))->toBe([
+                EncryptCookies::class, AddQueuedCookiesToResponse::class, StartSession::class, $wall,
+            ]);
+
             event(new RouteMatched($route, Request::create('/')));
-
-            $middleware = $route->gatherMiddleware();
-
-            expect(
-                $middleware,
-                $name.' route '.$route->getActionName().' should be protected',
-            )->toContain(PasswordProtect::class)
-                ->and(array_slice($route->middleware(), 0, 4))->toBe([
-                    EncryptCookies::class,
-                    AddQueuedCookiesToResponse::class,
-                    StartSession::class,
-                    PasswordProtect::class,
-                ]);
+            expect($route->gatherMiddleware())->toContain($wall)->not->toContain(StartSession::class);
         });
     }
 });
@@ -382,12 +399,16 @@ it('blocks anonymous requests to REST, GraphQL, and Glide before their controlle
         $uri = '/'.preg_replace('/\{[^}]+\??\}/', 'security-review', $route->uri());
         $method = in_array('GET', $route->methods(), true) ? 'GET' : $route->methods()[0];
 
-        $this->call($method, $uri)
-            ->assertRedirect(route('statamic.password-protect.show'));
+        $response = $this->call($method, $uri);
+        if (str_starts_with($route->getActionName(), GlideController::class.'@')) {
+            $response->assertRedirect(route('statamic.password-protect.show'));
+        } else {
+            $response->assertUnauthorized()->assertJsonStructure(['message']);
+        }
     }
 });
 
-it('flushes static caching once per protected password and restores the strategy', function () {
+it('flushes once across guard instances without modifying cache configuration', function () {
     config(['statamic.static_caching.strategy' => 'full']);
 
     $staticCache = Mockery::mock(StaticCacheManager::class);
@@ -396,10 +417,79 @@ it('flushes static caching once per protected password and restores the strategy
     $guard = new StaticCacheGuard($staticCache, $cache);
 
     $guard->synchronize(true, 'fingerprint');
-    expect(config('statamic.static_caching.strategy'))->toBeNull();
-
-    $guard->synchronize(true, 'fingerprint');
-    $guard->synchronize(false);
+    expect(config('statamic.static_caching.strategy'))->toBe('full');
+    (new StaticCacheGuard($staticCache, $cache))->synchronize(true, 'fingerprint');
+    (new StaticCacheGuard($staticCache, $cache))->synchronize(false);
 
     expect(config('statamic.static_caching.strategy'))->toBe('full');
+});
+
+it('marks authorized responses inside the static cache writer and reads fresh settings for each request', function () {
+    $router = app('router');
+    $stack = $router->resolveMiddleware(['statamic.web']);
+    $gate = array_search(PasswordProtect::class, $stack, true);
+    $cache = array_search(StaticCacheMiddleware::class, $stack, true);
+    $marker = array_search(PreventProtectedPageCaching::class, $stack, true);
+    expect($gate)->toBeInt()->and($cache)->toBeInt()->and($marker)->toBeInt();
+    expect($gate)->toBeLessThan($cache)->and($cache)->toBeLessThan($marker);
+
+    $middleware = app(PreventProtectedPageCaching::class);
+    $marked = fn () => $middleware->handle(Request::create('/'), fn () => response('page'))
+        ->headers->has('X-Statamic-Uncacheable');
+    expect($marked())->toBeFalse();
+    enablePasswordProtection();
+    expect($marked())->toBeTrue();
+    disablePasswordProtection();
+    expect($marked())->toBeFalse();
+});
+
+it('protects the Statamic frontend when the configured site group is not web', function () {
+    enablePasswordProtection();
+    $router = app('router');
+    $router->middlewareGroup('custom-site', []);
+    $route = $router->getRoutes()->getByName('statamic.site');
+    $action = $route->getAction();
+    $action['middleware'] = ['custom-site'];
+    $route->setAction($action);
+    $this->get('/about')->assertRedirect(route('statamic.password-protect.show'));
+});
+
+it('retains settings for one request only', function () {
+    $passwords = app(PasswordSettings::class);
+    $request = Request::create('/');
+    expect($passwords->settings($request))->toBe($passwords->settings($request))
+        ->not->toBe($passwords->settings(Request::create('/')));
+});
+
+it('does not install the wall on unrelated API routes', function () {
+    enablePasswordProtection();
+    expect(app('router')->resolveMiddleware(['api']))->not->toContain(PasswordProtect::class);
+    $this->getJson('/about')->assertUnauthorized()->assertJsonStructure(['message']);
+});
+
+it('leaves the site password URL and disabled delivery route middleware alone', function () {
+    expect(route('statamic.password-protect.show', [], false))->toBe('/!/statamic-password-protect/password');
+    $this->get('/password')->assertNotFound();
+    $route = collect(app('router')->getRoutes()->getRoutes())
+        ->first(fn ($route) => str_starts_with($route->getActionName(), GlideController::class.'@'));
+    $original = $route->middleware();
+    enablePasswordProtection();
+    event(new RouteMatched($route, Request::create('/')));
+    disablePasswordProtection();
+    event(new RouteMatched($route, Request::create('/', 'GET', [], [config('session.cookie') => 'existing'])));
+    expect($route->middleware())->toBe($original)->not->toContain(StartSession::class);
+});
+
+it('counts only failures and groups IPv6 clients by network', function () {
+    enablePasswordProtection();
+    $url = route('statamic.password-protect.verify');
+    $this->withServerVariables(['REMOTE_ADDR' => '2001:db8::1']);
+    for ($i = 0; $i < 5; ++$i) {
+        $this->post($url, ['password' => VALID_PASSWORD])->assertCookie(PasswordAccess::COOKIE);
+        $this->post($url, ['password' => 'invalid'])->assertSessionHasErrors('password');
+    }
+    $this->withServerVariables(['REMOTE_ADDR' => '2001:db8::2'])
+        ->post($url, ['password' => VALID_PASSWORD])->assertTooManyRequests();
+    $this->withServerVariables(['REMOTE_ADDR' => '2001:db8:0:1::1'])
+        ->post($url, ['password' => VALID_PASSWORD])->assertCookie(PasswordAccess::COOKIE);
 });

@@ -3,3 +3,9 @@
 /.gitignore         export-ignore
 /phpunit.xml.dist   export-ignore
 /tests              export-ignore
+/scripts             export-ignore
+/justfile            export-ignore
+/RELEASING.md        export-ignore
+/AGENTS.md           export-ignore
+/CLAUDE.md           export-ignore
+/.release.json       export-ignore

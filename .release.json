@@ -3,6 +3,8 @@
   "sign_tag": true,
   "version_files": [],
   "checks": [
+    ["composer", "validate", "--strict"],
+    ["composer", "audit"],
     [
       "vendor/bin/pest"
     ]

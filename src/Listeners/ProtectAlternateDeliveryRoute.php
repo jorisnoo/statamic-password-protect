@@ -13,6 +13,6 @@ class ProtectAlternateDeliveryRoute
 
     public function handle(RouteMatched $event): void
     {
-        $this->protector->protect($event->route);
+        $this->protector->protect($event->route, $event->request);
     }
 }

@@ -2,6 +2,7 @@
 
 namespace Noo\PasswordProtect\Listeners;
 
+use Illuminate\Validation\ValidationException;
 use Noo\PasswordProtect\Fieldtypes\ProtectedPassword;
 use Noo\PasswordProtect\Security\PasswordAccess;
 use Noo\PasswordProtect\Security\PasswordSettings;
@@ -26,22 +27,27 @@ class PrepareAddonSettings
         }
 
         $password = $this->passwords->passwordHash($settings);
-        $existing = $this->passwords->passwordHash();
-        $existingIsHash = $this->passwords->isPasswordHashed();
-        $existingEnabled = $this->passwords->isEnabled();
-        $existingSalt = $this->passwords->authorizationSalt();
+        $previous = $this->passwords->settings();
+        $existing = $this->passwords->passwordHash($previous);
+        $existingIsHash = $this->passwords->isPasswordHashed($previous);
+        $existingEnabled = $this->passwords->isEnabled($previous);
+        $existingSalt = $this->passwords->authorizationSalt($previous);
 
-        if ($password === ProtectedPassword::UNCHANGED && $existing) {
-            $password = $existingIsHash
-                ? $existing
-                : $this->passwords->hash($existing);
+        if ($password === ProtectedPassword::UNCHANGED) {
+            $password = $existing !== null && ! $existingIsHash
+                ? $this->passwords->hash($existing)
+                : $existing;
             $settings->set('password', $password);
-        } elseif ($password && ! ($password === $existing && $existingIsHash)) {
+        } elseif ($password !== null && ! ($password === $existing && $existingIsHash)) {
             $password = $this->passwords->hash($password);
             $settings->set('password', $password);
         }
 
-        $settings->set('password_hashed', (bool) $password);
+        if ($password === null && filter_var($settings->get('enabled'), FILTER_VALIDATE_BOOL)) {
+            throw ValidationException::withMessages(['password' => __('A password is required to enable protection.')]);
+        }
+
+        $settings->set('password_hashed', $password !== null);
 
         $enabled = $this->passwords->isEnabled($settings);
         $passwordChanged = $password !== $existing;
@@ -52,7 +58,7 @@ class PrepareAddonSettings
         }
 
         $settings->set('authorization_salt', $salt);
-        $fingerprint = $password ? $this->access->fingerprint($password, $salt) : null;
+        $fingerprint = $password !== null ? $this->access->fingerprint($password, $salt) : null;
 
         $this->staticCache->synchronize($enabled, $fingerprint);
     }
