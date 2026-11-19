@@ -6,7 +6,7 @@ Settings are managed through the addon settings page in the Statamic control pan
 
 ## Requirements
 
-- PHP 8.3+
+- PHP 8.4+
 - Statamic 6.24.2+
 - Laravel 12.40+ or 13
 

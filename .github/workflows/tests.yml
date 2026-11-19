@@ -16,8 +16,8 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - {php: '8.3', testbench: '^10.0', dependencies: lowest}
-          - {php: '8.3', testbench: '^11.0', dependencies: stable}
+          - {php: '8.4', testbench: '^10.0', dependencies: lowest}
+          - {php: '8.4', testbench: '^11.0', dependencies: stable}
           - {php: '8.5', testbench: '^10.0', dependencies: stable}
           - {php: '8.5', testbench: '^11.0', dependencies: stable}
     steps:
